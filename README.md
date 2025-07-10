@@ -1,114 +1,124 @@
-# Take-Home Challenge: URL Stats Aggregation & Reporting API
 
-## Overview
+# URL Shortener & Analytics API
 
-You must build a **FastAPI**-based microservice that handles two primary functions:
+This FastAPI-based microservice provides URL shortening, redirection, and analytics functionality. 
 
-1. **Shorten URLs** – The service stores long URLs, returns a short slug, and tracks usage statistics (visits).  
-2. **Aggregate/Report** – The service provides an endpoint to query aggregated stats (e.g., total visits per link, top N visited links, etc.).  
+---
 
-Your goal is to design, implement, and deploy this service so we can test it live and evaluate its code and performance characteristics.
+## Features
 
-**Important**: This brief describes a lot of functionality. If you don't have the time to fully design and implement the features described in this brief that is fine!
-Try to immplement a solution:
-1. written using fastapi
-2. has a database layer
-3. can easily be run locally for testing
+### URL Shortening
+- `POST /shorten`  
+  Accepts a long URL and returns a shortened slug and full short URL.
+- Idempotent: posting the same long URL returns the same slug. This is done so we can map one long url to a slug.
 
-## Requirements
+### Redirection
+- `GET /{slug}`  
+  Redirects (HTTP 307) to the original long URL.
+- Logs a visit with timestamp.
+- Uses Redis for fast slug resolution.
 
-### 1. Short Link Creation
+### Analytics
+- `GET /stats` – Returns the top N visited links.  
+- `GET /stats/{slug}` – Returns visit count and latest visit time for one slug.
+- Cached in Redis to reduce DB load.
 
-- **Endpoint**: `POST /shorten`
-- **Request Body** (example):
-  ```json
-  {
-    "long_url": "https://www.example.com/very/long/url"
-  }
-  ```
-- **Response** (example):
-  ```json
-  {
-    "slug": "abcd123",
-    "short_url": "http://your-service.com/abcd123"
-  }
-  ```
-- Behavior:
-  - Store the mapping of slug → original URL in your database.
-  - Return a generated slug and the corresponding short URL.
-  - Decide whether to reuse an existing slug if the same long_url is posted again or always generate a new slug. Document your choice.
- 
-### 2. Redirection
+---
 
-- **Endpoint**: GET /{slug}
-- **Behavior**:
-  - Look up slug in the database.
-  - If found, redirect (HTTP 307) to the original long_url.
-  - If not found, return 404.
-  - Track usage: each time the short URL is accessed, increment a visit counter or store a timestamp record (so we can produce stats).
+## Tech Stack
 
-### 3. Reporting / Analytics
-- Provide one or more endpoints to retrieve usage stats:
-  - GET /stats – Return the top N links by total visits, or another useful summary.
-  - GET /stats/{slug} – Return data about how many times that link was visited, timestamps of visits, etc.
-- The exact shape of the data is up to you. An example response might be:
-```json
-[
-  {
-    "slug": "abcd123",
-    "long_url": "https://www.example.com/...",
-    "visits": 42,
-    "last_visit": "2025-12-01T13:00:00Z"
-  }
-]
+| Layer      | Tool                    |
+|------------|-------------------------|
+| Web        | FastAPI                 |
+| ORM        | SQLAlchemy              |
+| DB         | PostgreSQL              |
+| Caching    | Redis                   |
+| Migrations | Alembic                 |
+| Testing    | Pytest                  |
+| Container  | Docker + Compose        |
+
+---
+
+## Project Structure
+
+```
+app/
+├── main.py              # FastAPI entrypoint
+├── routes/              # API routers
+├── services/            # Business logic (slugging, stats)
+├── handler/             # DB access layer
+├── models/              # SQLAlchemy models
+├── schemas/             # Response objects to api
+├── utils/cache.py       # Redis wrapper
+├── tests/               # Unit + integration tests
 ```
 
-## Additional Consideration
-Think about these things as you are designing your implementation
+---
 
-### Database
-- You must use a relational database (e.g., PostgreSQL or MySQL).
-- Show how you manage schema or migrations.
-- Consider indexing. This service could potentially handle a high volume of requests.
+## Setup Instructions
 
-### Scalability
-- The service may receive bursts of traffic or a large backlog of links.
-- Show a concurrency strategy (e.g., how FastAPI handles multiple requests).
-- No need for a fully distributed system, but demonstrate an approach that wouldn’t deadlock or degrade severely under moderate scale.
+### 1. Clone the Repo
 
-### Deployment
-- Provide a Dockerfile and instructions (or a docker-compose.yml) to run the service.
-- If possible, host it somewhere we can test (like a small VM or container).
+```bash
+git clone https://github.com/rajib54/backend-take-home-challenge
+cd backend-take-home-challenge
+```
 
-### Testing
-- Include a basic test suite (e.g., pytest) verifying endpoints.
-- Unit tests for core logic + an integration test or two for the overall API are ideal.
+### 2. Run with Docker
 
-### Code Quality & Documentation
-- Clean, logical Python code with appropriate docstrings and function naming.
-- A short README.md explaining how to install, run, and test your project.
-- Good structure: for instance, separate modules for models, routes, and “business logic” or “services.”
+```bash
+docker-compose up --build
+```
+- This will apply migrations from alembic/versions folder. For any model changes we can generate migrations and it will be added in that folder
+- FastAPI: [http://localhost:8000](http://localhost:8000)
 
+---
 
-## Evaluation Criteria
+## Run Tests
 
-### We’ll be reviewing:
-- API correctness: Does the service meet the requirements?
-- Database design: Are schemas, indices, and queries well thought-out?
-- Performance: Any obviously inefficient design choices (e.g., storing massive data in memory, no indexing)?
-- Code clarity: Is the Python code idiomatic, maintainable, and logically separated?
-- Deployment: Can we hit the API?
+```bash
+docker-compose run web pytest
+```
 
-### Deliverables
-Please clone the provided Git repository, add your code, then push your changes or submit a link to your repository:
+- Includes both unit and integration tests.
 
-- Source code in Python + FastAPI.
-- App setup (Dockerfile / docker-compose / sh script).
-- README.md with:
-  - Setup instructions
-  - How to run tests
-  - Any design notes or trade-offs you made
+---
 
-In the following interview we will be spinning up your service and running some locust tests on it.
+## Design Decisions
 
-Good luck and have fun.
+- **Slug Generation**: Base62 encoded unique integer; deterministic for duplicate URLs. I used a table `slug_sequence` which has one row (sequence number). 
+When slug needs to be generated I take that number and generate slug. This number ensures slug are not totally random and doesn't get duplicated.
+For concurency purpose I lock that table after release the lock after slug-long_url mapping is added into DB. For distributed system we can improve this by assigning a range of sequnce for each machine.
+- **Visit Logging**: One DB insert per redirect; can be batched later for scale.
+- **Caching**:
+  - `slug:{slug}` – Cached for 1 day
+  - `report:top_n` – Cached for 60s and auto-invalidated
+- **Layered Architecture**: Handlers (DB), Services (business), Routes (API) separation
+- **Sync SQLAlchemy**: Chosen for simplicity; async support can be added later if needed.
+
+---
+
+## Requirements Checklist
+
+| Requirement                    | Status |
+|-------------------------------|--------|
+| FastAPI service                | ✅     |
+| URL shortening (`/shorten`)   | ✅     |
+| Redirection (`/{slug}`)       | ✅     |
+| Visit tracking                 | ✅     |
+| Stats (`/stats`, `/stats/{}`) | ✅     |
+| Relational DB (Postgres)      | ✅     |
+| Redis caching                 | ✅     |
+| Dockerized setup              | ✅     |
+| Unit & integration tests      | ✅     |
+| Structured codebase           | ✅     |
+| README with full instructions | ✅     |
+
+---
+
+## Notes
+
+- The project uses `.env` and `.env.test` to manage configs.
+- Make sure ports `5432`, `6379`, `8000`, and `8089` are free on your host machine.
+
+---
