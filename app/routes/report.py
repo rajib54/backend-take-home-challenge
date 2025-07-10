@@ -2,10 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.schemas.schemas import URLCreate, URLResponse, URLStats
-from app.services import url as url_service
+from app.schemas.schemas import URLStats
 from app.services import report as report_service
-from app.core.config import settings
 from typing import List
 
 router = APIRouter()

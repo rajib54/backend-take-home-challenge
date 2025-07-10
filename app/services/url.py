@@ -2,7 +2,8 @@
 from sqlalchemy.orm import Session
 from app.handler import url as handler
 from app.models.urls import URL
-from app.utils.cache import get_cache, set_cache
+from app.utils.cache import get_cache, set_cache, delete_cache
+from app.services.const import SLUG_CACHE_KEY_TEMPLATE, TOP_N_SLUG_CACHE_KEY
 
 def int_to_base62(n: int) -> str:
     """
@@ -59,12 +60,13 @@ def create_or_get_short_url(db, long_url: str) -> URL:
 
 def resolve_slug_and_record_visit(db, slug: str) -> URL | None:
     """Resolve slug to URL with Redis caching and avoid DB hit when cached."""
-    cache_key_template = "slug:{}"
-    cache_key = cache_key_template.format(slug)
+    cache_key = SLUG_CACHE_KEY_TEMPLATE.format(slug)
     cached = get_cache(cache_key)
     if cached:
         # No DB fetch needed, create_visit directly using cached ID
         handler.create_visit(db, cached["id"])
+        # Clear cache for top n url report since it can change
+        delete_cache(TOP_N_SLUG_CACHE_KEY)
         return URL(id=cached["id"], slug=cached["slug"], long_url=cached["long_url"])
 
     # Fallback to DB
@@ -77,4 +79,6 @@ def resolve_slug_and_record_visit(db, slug: str) -> URL | None:
             "slug": url.slug,
             "long_url": url.long_url
         }, ttl=60*60*24)
+        # Clear cache for top n url report since it can change
+        delete_cache(TOP_N_SLUG_CACHE_KEY)
     return url
