@@ -27,5 +27,5 @@ def get_top_urls(db: Session, limit: int = 10) -> List[URLStats]:
         for row in results
     ]
 
-    set_cache(TOP_N_SLUG_CACHE_KEY, [d.dict() for d in data])
+    set_cache(TOP_N_SLUG_CACHE_KEY, [d.model_dump() for d in data])
     return data

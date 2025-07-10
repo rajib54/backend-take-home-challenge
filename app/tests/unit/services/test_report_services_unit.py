@@ -1,4 +1,5 @@
 from app.services import report as report_service
+from app.schemas.schemas import URLStats
 
 def test_get_url_stats(mocker):
     mock_handler = mocker.patch("app.services.report.report_handler")
@@ -18,13 +19,17 @@ def test_get_url_stats(mocker):
 
 def test_get_top_urls(mocker):
     mock_handler = mocker.patch("app.services.report.report_handler")
-    mock_result = mock_handler.get_top_urls.return_value = [
-        {"slug": "one", "visits": 10},
-        {"slug": "two", "visits": 8}
+    
+    mock_result = [
+        URLStats(slug="one", long_url="https://one.com", visits=10, last_visit="2025-01-01T00:00:00"),
+        URLStats(slug="two", long_url="https://two.com", visits=8, last_visit="2025-01-01T01:00:00"),
     ]
+
+    mock_handler.get_top_urls.return_value = mock_result
 
     db = mocker.MagicMock()
     result = report_service.get_top_urls(db, limit=2)
 
     assert result == mock_result
     mock_handler.get_top_urls.assert_called_once_with(db, 2)
+
