@@ -69,15 +69,16 @@ cd backend-take-home-challenge
 ```bash
 docker-compose up --build
 ```
-- This will apply migrations from alembic/versions folder. For any model changes we can generate migrations and it will be added in that folder
+- This will apply migrations from alembic/versions folder. For any model changes we can generate migrations and it will be added in that folder.
+- This will also run the tests added in app/tests/ folder by spinning up test_runner container
 - FastAPI: [http://localhost:8000](http://localhost:8000)
 
 ---
 
 ## Run Tests
-
+You can run test manually by running the command
 ```bash
-docker-compose run web pytest
+docker-compose run test_runner
 ```
 
 - Includes both unit and integration tests.

@@ -41,6 +41,21 @@ services:
     env_file:
       - .env
 
+  test_runner:
+    build: .
+    container_name: test_runner
+    working_dir: /app
+    volumes:
+      - .:/app
+    depends_on:
+      - test_db
+      - redis
+    env_file:
+      - .env.test
+    environment:
+      - ENV_FILE=.env.test
+    command: pytest --maxfail=1 --disable-warnings -q
+
 volumes:
   pgdata:
   test_pgdata:

@@ -2,6 +2,7 @@ from app.config import REDIS_HOST, REDIS_PORT
 import redis.asyncio as redis
 import json
 from typing import Optional, Any
+import os
 
 client = redis.StrictRedis(
     host=REDIS_HOST,
