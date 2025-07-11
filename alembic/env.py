@@ -27,10 +27,10 @@ from app.core.database import Base
 target_metadata = Base.metadata
 
 # Get DB URL from environment
-database_url = os.getenv("SQLALCHEMY_DATABASE_URL")
+database_url = os.getenv("SQLALCHEMY_SYNC_DATABASE_URL")
 
 if not database_url:
-    raise ValueError("SQLALCHEMY_DATABASE_URL is not set in environment")
+    raise ValueError("SQLALCHEMY_SYNC_DATABASE_URL is not set in environment")
 
 # Set DB URL dynamically
 config.set_main_option("sqlalchemy.url", database_url)
