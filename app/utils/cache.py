@@ -1,5 +1,5 @@
 from app.config import REDIS_HOST, REDIS_PORT
-import redis
+import redis.asyncio as redis
 import json
 from typing import Optional, Any
 
@@ -9,9 +9,9 @@ client = redis.StrictRedis(
     decode_responses=True
 )
 
-def get_cache(key: str) -> Optional[Any]:
+async def get_cache(key: str) -> Optional[Any]:
     """Retrieve a cached value by key, deserializing if needed."""
-    value = client.get(key)
+    value = await client.get(key)
     if value is None:
         return None
     try:
@@ -19,15 +19,16 @@ def get_cache(key: str) -> Optional[Any]:
     except json.JSONDecodeError:
         return value
 
-def set_cache(key: str, value: Any, ttl: int = 3600) -> None:
+async def set_cache(key: str, value: Any, ttl: int = 3600) -> None:
     """Set a value in cache, serializing to JSON if needed."""
     try:
         serialized = json.dumps(value)
     except (TypeError, ValueError):
         serialized = str(value)
-    client.setex(key, ttl, serialized)
+    await client.setex(key, ttl, serialized)
 
-def delete_cache(key: str) -> None:
+async def delete_cache(key: str) -> None:
     """Delete a key from the cache."""
-    if client.get(key):
-        client.delete(key)
+    exists = await client.get(key)
+    if exists:
+        await client.delete(key)
