@@ -89,10 +89,10 @@ docker-compose run web pytest
 - **Slug Generation**: Base62 encoded unique integer; deterministic for duplicate URLs. I used a table `slug_sequence` which has one row (sequence number). 
 When slug needs to be generated I take that number and generate slug. This number ensures slug are not totally random and doesn't get duplicated.
 For concurency purpose I lock that table after release the lock after slug-long_url mapping is added into DB. For distributed system we can improve this by assigning a range of sequnce for each machine.
-- **Visit Logging**: One DB insert per redirect; can be batched later for scale.
+- **Visit Logging**: One DB insert per redirect.
 - **Caching**:
   - `slug:{slug}` – Cached for 1 day
-  - `report:top_n` – Cached for 60s and auto-invalidated
+  - `report:top_n` – Cached for 1 hour and auto-invalidated
 - **Layered Architecture**: Handlers (DB), Services (business), Routes (API) separation
 - **Async SQLAlchemy**: To be able to handle more requests
 
