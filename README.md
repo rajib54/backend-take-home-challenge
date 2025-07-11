@@ -94,7 +94,7 @@ For concurency purpose I lock that table after release the lock after slug-long_
   - `slug:{slug}` – Cached for 1 day
   - `report:top_n` – Cached for 60s and auto-invalidated
 - **Layered Architecture**: Handlers (DB), Services (business), Routes (API) separation
-- **Sync SQLAlchemy**: Chosen for simplicity; async support can be added later if needed.
+- **Async SQLAlchemy**: To be able to handle more requests
 
 ---
 

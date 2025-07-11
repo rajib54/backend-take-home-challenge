@@ -9,3 +9,5 @@ httpx
 pytest
 pytest-mock
 pytest-dotenv
+pytest-asyncio
+asyncpg
